@@ -1,19 +1,27 @@
 from data_loader import get_stock_data
-from indicators import getMovingAverages
-from advisor import movingAvg_Recommandation
+from model import run_model
 
 def main():
     print("Investment Advisor AI setup complete.")
-   
-    ticker = "AAPL"
-    data = get_stock_data(ticker)
-    currentPrice, shortMA, longMA = getMovingAverages(data, 20, 50)
-    recommendation = movingAvg_Recommandation(currentPrice, shortMA, longMA)
+
+    ticker = input("Enter a stock ticker (e.g. AAPL): ").strip().upper()
+
+    if not ticker:
+        print("Ticker cannot be empty.")
+        return
+    try:
+        data = get_stock_data(ticker)
+        result = run_model(data)
+    except Exception as e:
+        print("Error:", e)
+        return
+
     print(f"Ticker: {ticker}")
-    print(f"Current Price: {currentPrice:.2f}")
-    print(f"Short MA: {shortMA:.2f}")
-    print(f"Long MA: {longMA:.2f}")
-    print(f"Recommendation: {recommendation}")
+    print(f"Signal: {result['signal']}")
+    print(f"Current Price: {result['current_price']:.2f}")
+    print(f"Short MA: {result['short_ma']:.2f}")
+    print(f"Long MA: {result['long_ma']:.2f}")
+    print(f"Reason: {result['reason']}")
 
 if __name__ == "__main__":
     main()
