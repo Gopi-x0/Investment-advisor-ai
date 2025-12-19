@@ -14,7 +14,7 @@ def getMomentum(data, nDays):
     checkData(data)
     
     currentPrice = data["Close"].iloc[-1]
-    pastPrice = data["Close"].iloc[-nDays-1] 
+    pastPrice = data["Close"].iloc[-nDays-1]
 
     momentum = (currentPrice - pastPrice) / pastPrice
     return momentum
