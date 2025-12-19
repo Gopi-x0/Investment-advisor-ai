@@ -28,6 +28,17 @@ def getTrendStrength(data, longRange):
     trendStrength = (currentPrice - longMA) / longMA
     return trendStrength
 
+##could use pct_change as that is faster 
+def getReturns(data): 
+    prices = data["Close"].values
+    returns = []
+
+    for i in range(1, len(prices)):
+        dailyReturn = (prices[i] - prices[i - 1]) / prices[i - 1]
+        returns.append(dailyReturn)
+    
+    return returns
+
 def getVolatility(data):
     checkData(data)
     returns = getReturns(data)
@@ -53,12 +64,3 @@ def checkData(data):
     if data is None or data.empty:
         raise ValueError("Data is empty or None")
     
-def getReturns(data): 
-    prices = data["Close"].values
-    returns = []
-
-    for i in range(1, len(prices)):
-        dailyReturn = (prices[i] - prices[i - 1]) / prices[i - 1]
-        returns.append(dailyReturn)
-    
-    return returns
