@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 
-def get_stock_data(ticker, period="1y"):
+def get_stock_data(ticker, period="y"):
     """
     Downloads and cleans historical stock price data.
 

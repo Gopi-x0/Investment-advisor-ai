@@ -4,33 +4,34 @@ import numpy as np
 def getMovingAverages(data, shortRange, longRange):
     checkData(data)
 
-    shortMA = float(data["Close"].tail(shortRange).mean())
-    longMA = float(data["Close"].tail(longRange).mean())
-    currentPrice = float(data["Close"].iloc[-1])
-
+    shortMA = data["Close"].tail(shortRange).mean().iloc[0]
+    longMA = data["Close"].tail(longRange).mean().iloc[0]
+    currentPrice = data["Close"].iloc[-1].iloc[0]
+    
     return currentPrice, shortMA, longMA
 
-def getMomentum(data, nDays): 
+def getMomentum(data, nDays):
     checkData(data)
     
-    currentPrice = data["Close"].iloc[-1]
-    pastPrice = data["Close"].iloc[-nDays-1]
+    currentPrice = data["Close"].iloc[-1].iloc[0]
+    pastPrice = data["Close"].iloc[-nDays - 1].iloc[0]
 
     momentum = (currentPrice - pastPrice) / pastPrice
     return momentum
 
-def getTrendStrength(data, longRange): 
+def getTrendStrength(data, longRange):
     checkData(data)
-    
-    currentPrice = data["Close"].iloc[-1]
-    longMA = float(data["Close"].tail(longRange).mean())
 
-    trendStrength = (currentPrice - longMA) / longMA
-    return trendStrength
+    currentPrice = data["Close"].iloc[-1].iloc[0]
+    longMA = data["Close"].tail(longRange).mean().iloc[0]
+
+    return (currentPrice - longMA) / longMA
+
 
 ##could use pct_change as that is faster 
 def getReturns(data): 
-    prices = data["Close"].values
+    checkData(data)
+    prices = data["Close"].iloc[:,0].values
     returns = []
 
     for i in range(1, len(prices)):

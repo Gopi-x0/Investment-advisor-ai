@@ -1,5 +1,8 @@
+from pyexpat import features
 from data_loader import get_stock_data
+from ml_dataset import build_feature_dataset
 from model import run_model
+from ml_labels import create_labels
 
 def main():
     print("Investment Advisor AI setup complete.")
@@ -22,6 +25,15 @@ def main():
     print(f"Short MA: {result['short_ma']:.2f}")
     print(f"Long MA: {result['long_ma']:.2f}")
     print(f"Reason: {result['reason']}")
+
+    features = build_feature_dataset(data)
+    print(features.head())
+    print(features.tail())
+
+    labels = create_labels(data)
+    print(labels.value_counts())
+    print(labels.head())
+
 
 if __name__ == "__main__":
     main()
