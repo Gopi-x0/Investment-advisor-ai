@@ -60,6 +60,43 @@ def getSharpeRatio(data):
     sharpeRatio = avgReturn / volatility
     return sharpeRatio
 
+def getATR(data, period=14):
+    """
+    Average True Range (Wilder)
+    """
+    checkData(data)
+
+    high = data["High"]
+    low = data["Low"]
+    close_prev = data["Close"].shift(1)
+
+    tr = pd.concat([
+        high - low,
+        (high - close_prev).abs(),
+        (low - close_prev).abs()
+    ], axis=1).max(axis=1)
+
+    atr = tr.ewm(alpha=1/period, adjust=False).mean()
+    return float(atr.iloc[-1])
+
+def getRSI(data, period=14):
+    """
+    RSI using Wilder's smoothing (industry standard)
+    """
+    checkData(data)
+
+    delta = data["Close"].diff()
+    gains = delta.clip(lower=0)
+    losses = -delta.clip(upper=0)
+
+    avg_gain = gains.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    avg_loss = losses.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+
+    return float(rsi.iloc[-1])
+
 
 def checkData(data):
     if data is None or data.empty:

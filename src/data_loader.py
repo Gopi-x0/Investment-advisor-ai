@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 
-def get_stock_data(ticker, period="y"):
+def get_stock_data(ticker, period="5y"): #Change years for ML
     """
     Downloads and cleans historical stock price data.
 
