@@ -1,11 +1,14 @@
 from pyexpat import features
 from data_loader import get_stock_data
 from ml_dataset import build_feature_dataset
-from model import run_model
 from ml_labels import create_labels
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import train_test_split
+from model import (
+    run_model,
+    train_random_forest,
+    evaluate_model,
+    predict_latest_signal,
+    get_feature_importances
+)
 import pandas as pd
 
 def main():
@@ -32,49 +35,40 @@ def main():
 
     features = build_feature_dataset(data)
     labels = create_labels(data)
+    
     dataset = features.join(labels.rename("label"), how="inner")
     
-    label_map = {"SELL": -1, "HOLD": 0, "BUY": 1}
+    label_map = {"SELL": -1, "BUY": 1}
     dataset["label_num"] = dataset["label"].map(label_map)
     
     features = dataset[[ "current_price", "short_ma", "long_ma", "momentum", "volatility", "trend_strength"]]
     labels = dataset["label_num"]
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        features, labels, test_size=0.2, shuffle=False
-    )   
+    rf_model, X_test, y_test = train_random_forest(features, labels)
 
-    rf_model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=6,
-        min_samples_leaf=20,
-        random_state=42,
-        class_weight="balanced"
-    )
+    results = evaluate_model(rf_model, X_test, y_test)
 
-    rf_model.fit(X_train, y_train)
-
-    y_pred = rf_model.predict(X_test)
     print("\nRandom Forest Model Performance:")
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print(classification_report(y_test, y_pred)) 
-    
-    latest_features = features.iloc[[-1]]
-    ml_signal_num = rf_model.predict(latest_features)[0]
+    print("Accuracy:", results["accuracy"])
+    print(results["report"])
 
-    inv_label_map = {-1: "SELL", 0: "HOLD", 1: "BUY"}
-    ml_signal = inv_label_map[ml_signal_num]
+    latest_features = features.iloc[[-1]]
+    ml_signal = predict_latest_signal(rf_model, latest_features)
 
     print("\nML Recommendation (Random Forest):")
     print("ML Signal:", ml_signal)
-   
-    feature_importance = pd.Series(
-        rf_model.feature_importances_,
-        index= features.columns
-    ).sort_values(ascending=False)
+
+    feature_importance = get_feature_importances(
+        rf_model,
+        features.columns
+    )
 
     print("\nFeature Importance:")
     print(feature_importance)
+
+    print("\nLabel distribution:")
+    print(dataset["label"].value_counts(normalize=True))
+
 
 if __name__ == "__main__":
     main()

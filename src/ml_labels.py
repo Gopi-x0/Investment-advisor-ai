@@ -1,6 +1,6 @@
 import pandas as pd
 
-def create_labels(data, lookahead_days=5, threshold=0.02):
+def create_labels(data, lookahead_days=20, threshold =0.05):
     """
     Create BUY / HOLD / SELL labels based on future returns.
 
@@ -30,9 +30,6 @@ def create_labels(data, lookahead_days=5, threshold=0.02):
             labels[i] = "BUY"
         elif future_return < -threshold:
             labels[i] = "SELL"
-        else:
-            labels[i] = "HOLD"
-
     # For the last 'lookahead_days' entries, we cannot compute future returns
 
     labels_series = pd.Series(labels, index=data.index)
