@@ -35,14 +35,21 @@ def main():
 
     features = build_feature_dataset(data)
     labels = create_labels(data)
-    
+
     dataset = features.join(labels.rename("label"), how="inner")
-    
-    label_map = {"SELL": -1, "BUY": 1}
-    dataset["label_num"] = dataset["label"].map(label_map)
-    
-    features = dataset[[ "current_price", "short_ma", "long_ma", "momentum", "volatility", "trend_strength"]]
-    labels = dataset["label_num"]
+
+    features = dataset[
+    [
+        "current_price",
+        "short_ma",
+        "long_ma",
+        "momentum",
+        "volatility",
+        "trend_strength",
+    ]
+]
+    labels = dataset["label"]
+
 
     rf_model, X_test, y_test = train_random_forest(features, labels)
 

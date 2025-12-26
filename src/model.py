@@ -11,6 +11,8 @@ def run_model(data):
         signal = "BUY"
     elif short_ma < long_ma and current_price < long_ma:
         signal = "SELL"
+    else:
+        signal = "HOLD"
 
     return {
         "signal": signal,
@@ -63,9 +65,14 @@ def predict_latest_signal(model, latest_features):
     Returns:
     - signal: predicted signal ('BUY', 'SELL')
     """
-    label_map = {1: "BUY", -1: "SELL"}
     prediction = model.predict(latest_features)[0]
-    return "BUY" if prediction == 1 else "SELL"
+    
+    if prediction == 1:
+        return "BUY"
+    elif prediction == -1:
+        return "SELL"
+    else:
+        return "HOLD"
 
 def get_feature_importances(model, feature_names):
     """
@@ -89,6 +96,6 @@ def evaluate_model(model, X_test, y_test):
 
     return {
         "accuracy": accuracy_score(y_test, y_pred),
-        "report": classification_report(y_test, y_pred)
+        "report": classification_report(y_test, y_pred, zero_division=0)
     }
 
