@@ -2,26 +2,36 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 import pandas as pd
-from indicators import getMovingAverages
+from indicators import getMovingAverages, getMomentum, getTrendStrength, getVolatility, getSharpeRatio
+from advisor import overall_Recommendation
 
-def run_model(data):
+def run_ruleBasedModel(data):
     current_price, short_ma, long_ma = getMovingAverages(data, 20, 50)
 
-    if short_ma > long_ma and current_price > long_ma:
-        signal = "BUY"
-    elif short_ma < long_ma and current_price < long_ma:
-        signal = "SELL"
-    else:
-        signal = "HOLD"
+    momentum = getMomentum(data, 14)
+    trend_strength = getTrendStrength(data, 50)
+    volatility = getVolatility(data)
+    sharpe_ratio = getSharpeRatio(data)
+
+    final_decision, score, breakdown = overall_Recommendation(
+        current_price,
+        short_ma,
+        long_ma,
+        momentum,
+        trend_strength,
+        volatility,
+        sharpe_ratio
+    )
 
     return {
-        "signal": signal,
+        "signal": final_decision,
+        "score": score,
+        "breakdown": breakdown,
         "current_price": current_price,
         "short_ma": short_ma,
         "long_ma": long_ma,
-        "reason": "Based on 20-day and 50-day moving averages"
+        "reason": "Multi-factor rule-based trading model (trend, momentum, risk-adjusted returns)"
     }
-
 
 def train_random_forest(X, y):
     """

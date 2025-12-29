@@ -44,16 +44,26 @@ def overall_Recommendation(currentPrice, shortMA, longMA, momentum, trendStrengt
         "sharpe": sharpe_Recommendation(sharpeRatio),
     }
 
-    # Scoring map
-    score_map = {"BUY": 1, "HOLD": 0, "SELL": -1}
-    total_score = sum(score_map[r] for r in recommendations.values())
+    weights = {
+        "moving_avg": 2,
+        "momentum": 2,
+        "trend_strength": 2,
+        "volatility": 1,
+        "sharpe": 1
+    }
 
-    # Final decision thresholds
-    if total_score >= 2:
-        final_decision = "BUY"
-    elif total_score <= -2:
-        final_decision = "SELL"
-    else:
-        final_decision = "HOLD"
+    score_map = {
+        "BUY": 1,
+        "SELL": -1,
+        "HOLD": 0
+    }
+
+    total_score = sum(
+        score_map[recommendations[key]] * weights[key]
+        for key in recommendations
+    )
+
+    # Force BUY / SELL
+    final_decision = "BUY" if total_score > 0 else "SELL"
 
     return final_decision, total_score, recommendations
