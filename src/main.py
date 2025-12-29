@@ -1,10 +1,11 @@
 from pyexpat import features
 from data_loader import get_stock_data
 from ml_dataset import build_feature_dataset
-from ml_labels import create_labels
+from ml_labels import create_labels, create_normal_labels, create_TBL, create_TBL_volatility_adjustment
 from model import (
     run_ruleBasedModel,
-    train_random_forest,
+    train_model,
+    train_model_walk_forward,
     evaluate_model,
     predict_latest_signal,
     get_feature_importances
@@ -49,11 +50,11 @@ def main():
     
     print("")
     print("=" * 60)
-    print(" MACHINE LEARNING (RANDOM FOREST) MODEL ".center(60, "="))
+    print(" MACHINE LEARNING MODEL ".center(60, "="))
     print("=" * 60) 
 
     features = build_feature_dataset(data)
-    labels = create_labels(data)
+    labels = create_TBL_volatility_adjustment(data, lookahead_days=20,volatility_window=20,k= 1.3) 
 
     dataset = features.join(labels.rename("label"), how="inner")   
     feature_cols = [
@@ -64,30 +65,54 @@ def main():
     "price_position_52w", "momentum_5d", "momentum_20d"
     ]
     features = dataset[feature_cols]
-    labels = dataset[labels]
+    labels = dataset["label"]
 
-    rf_model, X_test, y_test = train_random_forest(features, labels)
+    print("")
+    print(dataset.head())
+    print("")
+    print(dataset.tail())
 
-    results = evaluate_model(rf_model, X_test, y_test)
+    #rf_model, X_test, y_test, scaler, selected_features  = train_model(features, labels, use_feature_selection= True, top_n_features=10, use_gradient_boost = False)
+    #results = evaluate_model(rf_model, X_test, y_test)
+    #print("\nRandom Forest Model Performance:")
+    #print("Accuracy:", results["accuracy"])
+    #print(results["report"])
 
-    print("\nRandom Forest Model Performance:")
-    print("Accuracy:", results["accuracy"])
-    print(results["report"])
+    #OR walk forward validation
+    rf_model, cv_results, selected_features, scaler = train_model_walk_forward(features, labels, n_splits=5, use_feature_selection=True, top_n_features=10, use_gradient_boost= False)
+
+    print("\n" + "="*60)
+    print(" MODEL ANALYSIS ".center(60, "="))
+    print("="*60)
+
+    print(f"Mean Accuracy:  {cv_results['mean_accuracy']:.4f} ± {cv_results['std_accuracy']:.4f}")
+    print(f"Mean F1 Score:  {cv_results['mean_f1']:.4f}")
+    print(f"Accuracy Range: {min(cv_results['all_accuracies']):.4f} to {max(cv_results['all_accuracies']):.4f}")
+
+    # Stability check
+    if cv_results['std_accuracy'] > 0.10:
+        print("\nHIGH VARIANCE - Model is unstable across time periods")
+    else:
+        print("\nModel shows consistent performance across time periods")
+
+    # Class balance check
+    if abs(cv_results['mean_accuracy'] - cv_results['mean_f1']) > 0.05:
+        print("Accuracy-F1 gap detected - possible class imbalance")
+    ################################### 
 
     latest_features = features.iloc[[-1]]
-    ml_signal = predict_latest_signal(rf_model, latest_features)
+    ml_signal = predict_latest_signal(rf_model, latest_features, scaler, selected_features)
 
-    print("\nML Recommendation (Random Forest):")
-    print("ML Signal:", ml_signal)
+    print("\nML Recommendation:")
+    print("ML Signal:", ml_signal) 
 
-    feature_importance = get_feature_importances(rf_model,features.columns)
+    feature_importance = get_feature_importances(rf_model, selected_features)
 
     print("\nFeature Importance:")
     print(feature_importance)
 
-    print("\nLabel distribution:")
-    print(dataset["label"].value_counts(normalize=True))
-
+    #("\nLabel distribution:")
+    #print(dataset["label"].value_counts(normalize=True))
 
 if __name__ == "__main__":
     main()

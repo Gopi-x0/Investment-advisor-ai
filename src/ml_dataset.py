@@ -91,6 +91,6 @@ def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10)
     df = pd.DataFrame(rows).set_index("date")
     
     print(f"Feature dataset built: {len(df)} samples, {len(df.columns)} features")
-    print(f"✓ Features: {list(df.columns)}")
+    print(f"Features: {list(df.columns)}")
     
     return df

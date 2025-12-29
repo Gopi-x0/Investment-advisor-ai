@@ -120,11 +120,6 @@ def getSharpeRatio(data, window=None, risk_free_rate=0.02):
     sharpe_ratio = (annual_return - risk_free_rate) / annual_volatility
     return float(sharpe_ratio)
 
-
-# ============================================================================
-# ADDITIONAL FEATURES (Optional - for ML enhancement)
-# ============================================================================
-
 def getRSI(data, period=14):
     """
     Relative Strength Index using Wilder's smoothing
