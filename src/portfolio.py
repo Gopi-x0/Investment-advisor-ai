@@ -74,6 +74,112 @@ def portfolio_summary(price_frame, weights=None):
     }
 
 
+def average_pairwise_correlation(price_frame):
+    corr = correlation_matrix(price_frame).dropna(how="all", axis=0).dropna(how="all", axis=1)
+    if corr.shape[0] <= 1:
+        return 0.0
+    mask = ~np.eye(corr.shape[0], dtype=bool)
+    return float(np.nanmean(corr.to_numpy()[mask]))
+
+
+def highest_correlation_pair(price_frame):
+    corr = correlation_matrix(price_frame)
+    if corr.shape[0] <= 1:
+        return {"pair": None, "correlation": 0.0}
+
+    best_pair = None
+    best_value = -np.inf
+    columns = list(corr.columns)
+    for i, first in enumerate(columns):
+        for second in columns[i + 1 :]:
+            value = corr.loc[first, second]
+            if pd.notna(value) and value > best_value:
+                best_value = float(value)
+                best_pair = [first, second]
+
+    if best_pair is None:
+        return {"pair": None, "correlation": 0.0}
+    return {"pair": best_pair, "correlation": best_value}
+
+
+def weight_concentration(weights, columns=None):
+    weights = normalize_weights(weights, columns)
+    hhi = float((weights**2).sum())
+    effective_positions = 0.0 if hhi == 0 else float(1 / hhi)
+    max_symbol = str(weights.idxmax()) if not weights.empty else None
+    max_weight = float(weights.max()) if not weights.empty else 0.0
+    return {
+        "hhi": hhi,
+        "effective_positions": effective_positions,
+        "max_weight_symbol": max_symbol,
+        "max_weight": max_weight,
+    }
+
+
+def risk_contribution(price_frame, weights=None):
+    prices = pd.DataFrame(price_frame).dropna(how="all")
+    returns = price_returns(prices).fillna(0.0)
+    weights = normalize_weights(weights, prices.columns)
+    if returns.empty:
+        return pd.Series(0.0, index=weights.index)
+
+    covariance = returns.cov() * 252
+    portfolio_variance = float(weights.T @ covariance @ weights)
+    if portfolio_variance <= 0 or pd.isna(portfolio_variance):
+        return pd.Series(0.0, index=weights.index)
+
+    contribution = weights * covariance.dot(weights) / portfolio_variance
+    return contribution.reindex(weights.index).fillna(0.0)
+
+
+def portfolio_diagnostics(price_frame, weights=None):
+    prices = pd.DataFrame(price_frame).dropna(how="all")
+    weights = normalize_weights(weights, prices.columns)
+    summary = portfolio_summary(prices, weights)
+    concentration = weight_concentration(weights)
+    risk_contrib = risk_contribution(prices, weights)
+    highest_pair = highest_correlation_pair(prices)
+    annual_volatility = summary["annualized_volatility"]
+    top_risk_symbol = str(risk_contrib.idxmax()) if not risk_contrib.empty else None
+    top_risk_pct = float(risk_contrib.max()) if not risk_contrib.empty else 0.0
+
+    warnings = []
+    if concentration["max_weight"] > 0.35:
+        warnings.append(
+            f"{concentration['max_weight_symbol']} is {concentration['max_weight']:.0%} of the portfolio."
+        )
+    if concentration["effective_positions"] < 3 and len(weights) >= 3:
+        warnings.append("Portfolio is concentrated; effective position count is below 3.")
+    if summary["diversification_score"] < 0.25 and len(weights) >= 2:
+        warnings.append("Diversification score is low because holdings move similarly.")
+    if annual_volatility > 0.30:
+        warnings.append(f"Portfolio annualized volatility is high at {annual_volatility:.0%}.")
+    if highest_pair["pair"] and highest_pair["correlation"] > 0.85:
+        warnings.append(
+            f"{highest_pair['pair'][0]} and {highest_pair['pair'][1]} are highly correlated."
+        )
+    if top_risk_pct > 0.50 and len(weights) >= 2:
+        warnings.append(f"{top_risk_symbol} contributes more than half of portfolio variance.")
+
+    return {
+        "weights": weights.to_dict(),
+        "cumulative_return": summary["cumulative_return"],
+        "annualized_volatility": annual_volatility,
+        "max_drawdown": summary["max_drawdown"],
+        "diversification_score": summary["diversification_score"],
+        "average_correlation": average_pairwise_correlation(prices),
+        "highest_correlation_pair": highest_pair,
+        "concentration_hhi": concentration["hhi"],
+        "effective_positions": concentration["effective_positions"],
+        "max_weight_symbol": concentration["max_weight_symbol"],
+        "max_weight": concentration["max_weight"],
+        "risk_contribution": risk_contrib.to_dict(),
+        "top_risk_symbol": top_risk_symbol,
+        "top_risk_contribution": top_risk_pct,
+        "warnings": warnings,
+    }
+
+
 def efficient_frontier(price_frame, n_portfolios=500, random_state=42):
     returns = price_returns(price_frame).dropna()
     if returns.empty:

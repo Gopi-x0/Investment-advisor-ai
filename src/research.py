@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from backtesting import BacktestResult, run_signal_backtest
 from config import AnalysisConfig, DEFAULT_ANALYSIS_CONFIG
 from data_loader import get_stock_data
+from decision import InvestorProfile, build_decision_summary
+from fundamentals import FundamentalAnalysis, fetch_yfinance_fundamentals
 from ml_dataset import FEATURE_COLUMNS, build_feature_dataset
 from ml_labels import create_labels
 from ml_pipeline import WalkForwardResult, permutation_importance_summary, predict_latest_signal, walk_forward_train
@@ -23,6 +25,8 @@ class ResearchReport:
     backtest: BacktestResult
     risk_summary: dict
     monte_carlo: MonteCarloResult
+    fundamentals: FundamentalAnalysis | None
+    decision_summary: dict
     warnings: list[str]
 
 
@@ -31,9 +35,26 @@ def build_research_report(
     period="5y",
     config: AnalysisConfig = DEFAULT_ANALYSIS_CONFIG,
     model_name="random_forest",
+    include_fundamentals=True,
+    investor_profile: InvestorProfile | None = None,
 ):
     data = get_stock_data(ticker, period=period, price_policy=config.price_policy)
-    return build_research_report_from_data(ticker, data, config=config, model_name=model_name)
+    fundamentals = None
+    fundamental_warning = None
+    if include_fundamentals:
+        try:
+            fundamentals = fetch_yfinance_fundamentals(ticker)
+        except Exception as exc:
+            fundamental_warning = f"Fundamentals unavailable: {exc}"
+    return build_research_report_from_data(
+        ticker,
+        data,
+        config=config,
+        model_name=model_name,
+        fundamentals=fundamentals,
+        fundamental_warning=fundamental_warning,
+        investor_profile=investor_profile,
+    )
 
 
 def build_research_report_from_data(
@@ -41,6 +62,9 @@ def build_research_report_from_data(
     data,
     config: AnalysisConfig = DEFAULT_ANALYSIS_CONFIG,
     model_name="random_forest",
+    fundamentals: FundamentalAnalysis | None = None,
+    fundamental_warning: str | None = None,
+    investor_profile: InvestorProfile | None = None,
 ):
     rule_result = run_ruleBasedModel(data)
     feature_frame = build_feature_dataset(data)
@@ -78,6 +102,18 @@ def build_research_report_from_data(
     )
 
     warnings = build_report_warnings(training_result, dataset)
+    if fundamental_warning:
+        warnings.append(fundamental_warning)
+    decision_summary = build_decision_summary(
+        rule_result=rule_result,
+        ml_prediction=ml_prediction,
+        model_metrics=training_result.metrics,
+        backtest_metrics=backtest.metrics,
+        risk_summary=risk_summary,
+        monte_carlo_metrics=monte_carlo.metrics,
+        fundamentals=fundamentals,
+        investor_profile=investor_profile,
+    )
     date_range = (data["Date"].min(), data["Date"].max()) if "Date" in data.columns else (data.index.min(), data.index.max())
     return ResearchReport(
         ticker=ticker,
@@ -90,6 +126,8 @@ def build_research_report_from_data(
         backtest=backtest,
         risk_summary=risk_summary,
         monte_carlo=monte_carlo,
+        fundamentals=fundamentals,
+        decision_summary=decision_summary,
         warnings=warnings,
     )
 

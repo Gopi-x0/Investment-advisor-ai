@@ -17,7 +17,9 @@ All six roadmap phases have been implemented in the local codebase:
 - Phase 5: watchlist and portfolio analytics.
 - Phase 6: saved reports, warnings, assumptions, limitations, and usability guardrails.
 
-Remaining work is hardening: pinned dependencies, CI, deterministic fixture data, richer dashboard controls, production-grade data handling, and human-approved changes to business-critical policies such as default price policy and neutral-score behavior.
+Post-roadmap additions now include decision translation, yfinance fundamentals scoring, stronger portfolio diagnostics, and a workflow-oriented Streamlit dashboard.
+
+Remaining work is hardening: pinned dependencies, CI, deterministic fixture data, official SEC fundamentals ingestion, production-grade data handling, paper-trading-only broker previews, and human-approved changes to business-critical policies such as default price policy and neutral-score behavior.
 
 ## Recommended Direction
 

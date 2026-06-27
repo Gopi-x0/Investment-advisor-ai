@@ -1,6 +1,6 @@
 # Investment Advisor AI
 
-Educational investment research and decision-support tooling for comparing rule-based signals, leakage-free ML validation, backtests, risk metrics, Monte Carlo scenarios, and portfolio/watchlist analytics.
+Educational investment research and decision-support tooling for comparing rule-based signals, leakage-free ML validation, financial-statement fundamentals, backtests, risk metrics, Monte Carlo scenarios, decision translation, and portfolio/watchlist analytics.
 
 This project is not financial advice, does not guarantee returns, and is not designed for automated real-money trading.
 
@@ -12,11 +12,14 @@ This project is not financial advice, does not guarantee returns, and is not des
 - Runs a multi-factor rule-based signal.
 - Builds a leakage-free sklearn ML pipeline with fold-local preprocessing and feature selection.
 - Reports validation metrics, class probabilities, feature importance, and warning guardrails.
+- Adds a decision translation layer that turns model/risk outputs into action status, conviction, suggested allocation, and dollars-at-risk.
+- Pulls yfinance financial statement data where available and scores fundamentals across growth, margins, free cash flow, leverage, and valuation.
 - Backtests ML signals with transaction costs and slippage.
 - Calculates risk metrics including volatility, Sharpe, Sortino, max drawdown, VaR, and CVaR.
 - Runs Monte Carlo bootstrap scenarios.
+- Strengthens portfolio diagnostics with concentration, effective positions, pairwise correlation, risk contribution, and portfolio Monte Carlo paths.
 - Saves model artifacts plus JSON and Markdown analysis reports.
-- Provides a Streamlit dashboard with ticker and portfolio/watchlist views.
+- Provides a Streamlit dashboard organized around Decision, Fundamentals, Model, Risk, Portfolio, and Report tabs.
 
 ## Setup
 
@@ -38,7 +41,9 @@ py src\main.py
 Successful CLI runs save:
 
 - model artifacts under `artifacts/models/`
-- JSON and Markdown reports under `reports/`
+- timestamped JSON and Markdown reports under `reports/YYYY-MM-DD/`
+
+The dashboard also saves a timestamped Markdown report for each completed run, so reports can be compared over time instead of replacing a single `latest` file.
 
 ## Run The Streamlit Dashboard
 
@@ -54,7 +59,7 @@ py -m ruff check src tests streamlit_app.py
 py -m compileall src tests streamlit_app.py
 ```
 
-Latest local verification: `52 passed`, ruff passed, compileall passed, and a live `AAPL` CLI smoke run completed.
+Verification should be rerun after recreating the local Python environment. The previous verified baseline before the decision/fundamentals UI update was `52 passed`, ruff passed, compileall passed, and a live `AAPL` CLI smoke run completed.
 
 ## Documentation
 

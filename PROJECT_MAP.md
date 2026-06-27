@@ -8,8 +8,8 @@ Scope: current repository map after the roadmap implementation. The app is posit
 
 `Investment-advisor-ai` now has two user-facing entry points:
 
-- A reliable CLI that downloads data, prints assumptions/disclaimers, runs the rule model, trains a leakage-free ML pipeline, backtests predictions with costs, runs risk and Monte Carlo analysis, saves a model artifact, and writes JSON/Markdown reports.
-- A Streamlit dashboard that exposes ticker analysis, model diagnostics, Monte Carlo results, saved-report downloads, and portfolio/watchlist analytics.
+- A reliable CLI that downloads data, prints assumptions/disclaimers, runs the rule model, trains a leakage-free ML pipeline, backtests predictions with costs, runs risk and Monte Carlo analysis, adds fundamentals/decision translation where available, saves a model artifact, and writes timestamped JSON/Markdown reports.
+- A Streamlit dashboard organized around Decision, Fundamentals, Model, Risk, Portfolio, and Report workflows. Each completed dashboard run automatically keeps a timestamped Markdown report.
 
 The project remains a local Python app. There is no backend API, database, migration system, auth layer, brokerage integration, or automated trading workflow.
 
@@ -34,8 +34,10 @@ The project remains a local Python app. There is no backend API, database, migra
 9. Run signal backtesting with transaction costs/slippage in `src/backtesting.py`.
 10. Calculate risk analytics in `src/risk_metrics.py`.
 11. Run Monte Carlo scenarios in `src/monte_carlo.py`.
-12. Persist model artifacts and reports through `src/ml_pipeline.py` and `src/reports.py`.
-13. Streamlit uses `src/research.py` for structured analysis and `src/portfolio.py` for watchlist/portfolio analytics.
+12. Pull and score financial-statement fundamentals through `src/fundamentals.py` when available.
+13. Translate the research output into action status, conviction, allocation, and dollars-at-risk through `src/decision.py`.
+14. Persist model artifacts and reports through `src/ml_pipeline.py` and `src/reports.py`.
+15. Streamlit uses `src/research.py`, `src/decision.py`, `src/fundamentals.py`, and `src/portfolio.py` for the dashboard workflow.
 
 ## Major Directories
 
@@ -53,6 +55,8 @@ The project remains a local Python app. There is no backend API, database, migra
 
 - `config.py`: explicit price policy, HOLD label policy, costs/slippage assumptions, risk settings, and educational disclaimer.
 - `data_loader.py`: `yfinance` download, MultiIndex column normalization, numeric cleanup, and price-policy application.
+- `decision.py`: investor profile, action translation, conviction scoring, position sizing, order-readiness blockers, and dollars-at-risk translation.
+- `fundamentals.py`: yfinance financial-statement extraction and scoring across revenue growth, margins, free cash flow, leverage, returns, and valuation.
 - `indicators.py`: technical indicator calculations.
 - `advisor.py`: rule-based recommendation scoring.
 - `model.py`: existing rule-model wrapper and legacy ML helpers kept for compatibility.
@@ -62,9 +66,9 @@ The project remains a local Python app. There is no backend API, database, migra
 - `backtesting.py`: signal backtesting with explicit transaction costs and slippage.
 - `risk_metrics.py`: volatility, Sharpe, Sortino, drawdown, VaR, and CVaR.
 - `monte_carlo.py`: bootstrap and parametric scenario simulations.
-- `portfolio.py`: watchlist returns, correlations, risk-parity weights, efficient frontier samples, and portfolio Monte Carlo.
+- `portfolio.py`: watchlist returns, correlations, concentration, risk contribution, risk-parity weights, efficient frontier samples, and portfolio Monte Carlo.
 - `research.py`: structured end-to-end analysis orchestration for the dashboard and future APIs.
-- `reports.py`: JSON/Markdown report payload generation and saving.
+- `reports.py`: JSON/Markdown report payload generation plus date-grouped, collision-safe report saving.
 
 ### `tests/`
 
@@ -80,11 +84,13 @@ Active automated pytest coverage includes:
 - backtesting with costs
 - risk metrics
 - Monte Carlo simulation summaries
+- fundamentals scoring
+- decision translation
 - portfolio/watchlist logic
 - report serialization
 - research orchestration validation
 
-Latest local result: `52 passed`, with three expected sklearn warnings from tiny synthetic feature-selection fixtures.
+The previous verified baseline was `52 passed`, with three expected sklearn warnings from tiny synthetic feature-selection fixtures. The decision/fundamentals/portfolio UI update adds tests and should be reverified after the local Python environment is repaired.
 
 ### `example/`
 
@@ -93,17 +99,18 @@ Educational TensorFlow/penguin/bakechef examples are unrelated to the investment
 ### Generated Local Artifacts
 
 - `artifacts/models/`: saved model artifacts from CLI runs.
-- `reports/`: saved JSON and Markdown analysis reports from CLI runs.
+- `reports/YYYY-MM-DD/`: saved timestamped analysis reports from CLI and dashboard runs.
 - `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `venv/`: generated/local environment artifacts.
 
 ## Remaining Risk Areas
 
 - Live `yfinance` data can be delayed, revised, unavailable, or shaped differently across package versions.
+- yfinance fundamentals can be incomplete, missing, stale, or provider-dependent; SEC EDGAR ingestion is a stronger future source for official statement facts.
 - The rule-based neutral-score policy still returns SELL through existing recommendation behavior; changing that would alter outputs and needs explicit approval.
 - Validation metrics are educational and can vary materially by ticker, date range, and market regime.
 - The project does not yet have pinned dependency versions, CI, cached fixture data, or a backend API.
 - The Streamlit dashboard is a local research interface, not a production web app.
-- No database schema, auth, audit log, brokerage integration, or real-money order routing exists.
+- No database schema, auth, audit log, brokerage integration, paper-trading workflow, or real-money order routing exists.
 
 ## Cleanup Decision Principles
 

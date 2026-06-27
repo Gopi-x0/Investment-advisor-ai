@@ -1,6 +1,8 @@
 from backtesting import run_signal_backtest
 from config import DEFAULT_ANALYSIS_CONFIG, describe_assumptions
 from data_loader import get_stock_data
+from decision import build_decision_summary
+from fundamentals import fetch_yfinance_fundamentals
 from ml_dataset import FEATURE_COLUMNS, build_feature_dataset
 from ml_labels import create_labels
 from ml_pipeline import (
@@ -171,6 +173,34 @@ def main():
     for key, value in monte_carlo.metrics.items():
         print(f"{key}: {value:.4f}")
 
+    report_warnings = []
+    fundamentals = None
+    try:
+        fundamentals = fetch_yfinance_fundamentals(ticker)
+        print("\nFundamentals:")
+        print(f"Rating: {fundamentals.rating}")
+        print(f"Score: {fundamentals.score:.1f}")
+        for concern in fundamentals.concerns:
+            print(f"Concern: {concern}")
+    except Exception as e:
+        report_warnings.append(f"Fundamentals unavailable: {e}")
+        print("\nFundamentals unavailable:", e)
+
+    decision_summary = build_decision_summary(
+        rule_result=result,
+        ml_prediction=ml_prediction,
+        model_metrics=training_result.metrics,
+        backtest_metrics=backtest.metrics,
+        risk_summary=risk_summary,
+        monte_carlo_metrics=monte_carlo.metrics,
+        fundamentals=fundamentals,
+    )
+    print("\nDecision Translation:")
+    print(f"Action: {decision_summary['action']}")
+    print(f"Conviction: {decision_summary['conviction']}")
+    print(f"Suggested position value: ${decision_summary['suggested_position_value']:.2f}")
+    print(f"Order readiness: {decision_summary['order_readiness']['status']}")
+
     artifact_path = save_model_artifact(training_result, f"artifacts/models/{ticker}_latest.joblib")
     print(f"\nSaved model artifact: {artifact_path}")
 
@@ -185,14 +215,16 @@ def main():
         backtest_metrics=backtest.metrics,
         risk_summary=risk_summary,
         monte_carlo_metrics=monte_carlo.metrics,
-        warnings=[],
+        fundamentals=fundamentals,
+        decision_summary=decision_summary,
+        warnings=report_warnings,
         data_summary={
             "rows": len(data),
             "date_start": data["Date"].min(),
             "date_end": data["Date"].max(),
         },
     )
-    report_paths = save_report_payload(report_payload, output_dir="reports", stem=f"{ticker}_latest")
+    report_paths = save_report_payload(report_payload, output_dir="reports")
     print(f"Saved analysis reports: {report_paths['json']} and {report_paths['markdown']}")
 
 

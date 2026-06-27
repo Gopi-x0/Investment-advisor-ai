@@ -16,6 +16,8 @@ def make_json_safe(value):
         return make_json_safe(value.to_dict())
     if isinstance(value, pd.DataFrame):
         return make_json_safe(value.to_dict(orient="records"))
+    if hasattr(value, "to_dict"):
+        return make_json_safe(value.to_dict())
     if hasattr(value, "item"):
         try:
             return value.item()
@@ -37,6 +39,8 @@ def build_report_payload(
     backtest_metrics=None,
     risk_summary=None,
     monte_carlo_metrics=None,
+    fundamentals=None,
+    decision_summary=None,
     warnings=None,
     data_summary=None,
 ):
@@ -55,6 +59,8 @@ def build_report_payload(
             "backtest_metrics": backtest_metrics or {},
             "risk_summary": risk_summary or {},
             "monte_carlo_metrics": monte_carlo_metrics or {},
+            "fundamentals": fundamentals or {},
+            "decision_summary": decision_summary or {},
             "warnings": warnings or [],
             "limitations": [
                 "Educational research only; not financial advice.",
@@ -78,6 +84,8 @@ def research_report_to_payload(report, config=DEFAULT_ANALYSIS_CONFIG):
         backtest_metrics=report.backtest.metrics,
         risk_summary=report.risk_summary,
         monte_carlo_metrics=report.monte_carlo.metrics,
+        fundamentals=report.fundamentals,
+        decision_summary=report.decision_summary,
         warnings=report.warnings,
         data_summary={
             "rows": report.data_rows,
@@ -105,6 +113,8 @@ def report_payload_to_markdown(payload):
         ("Backtest Metrics", "backtest_metrics"),
         ("Risk Summary", "risk_summary"),
         ("Monte Carlo Metrics", "monte_carlo_metrics"),
+        ("Fundamentals", "fundamentals"),
+        ("Decision Summary", "decision_summary"),
     ]:
         lines.extend(["", f"## {title}"])
         section = payload.get(key, {})
@@ -126,13 +136,51 @@ def report_payload_to_markdown(payload):
 
 
 def save_report_payload(payload, output_dir="reports", stem=None):
-    output_dir = Path(output_dir)
+    timestamp = report_timestamp(payload)
+    output_dir = Path(output_dir) / timestamp.strftime("%Y-%m-%d")
     output_dir.mkdir(parents=True, exist_ok=True)
     safe_ticker = str(payload["ticker"]).replace("/", "_").replace("\\", "_")
-    stem = stem or f"{safe_ticker}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
-    json_path = output_dir / f"{stem}.json"
-    markdown_path = output_dir / f"{stem}.md"
+    stem = stem or f"{safe_ticker}_{timestamp.strftime('%Y%m%d_%H%M%S_%f')}"
+    json_path = unique_report_path(output_dir / f"{stem}.json")
+    markdown_path = unique_report_path(output_dir / f"{stem}.md")
 
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     markdown_path.write_text(report_payload_to_markdown(payload), encoding="utf-8")
     return {"json": json_path, "markdown": markdown_path}
+
+
+def save_markdown_report(payload, output_dir="reports", stem=None):
+    timestamp = report_timestamp(payload)
+    output_dir = Path(output_dir) / timestamp.strftime("%Y-%m-%d")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    safe_ticker = str(payload["ticker"]).replace("/", "_").replace("\\", "_")
+    stem = stem or f"{safe_ticker}_{timestamp.strftime('%Y%m%d_%H%M%S_%f')}"
+    markdown_path = unique_report_path(output_dir / f"{stem}.md")
+    markdown_path.write_text(report_payload_to_markdown(payload), encoding="utf-8")
+    return markdown_path
+
+
+def report_timestamp(payload):
+    generated_at = payload.get("generated_at") if isinstance(payload, dict) else None
+    if generated_at:
+        try:
+            parsed = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc)
+
+
+def unique_report_path(path):
+    path = Path(path)
+    if not path.exists():
+        return path
+
+    for counter in range(2, 10_000):
+        candidate = path.with_name(f"{path.stem}_{counter:02d}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+
+    raise FileExistsError(f"Could not create a unique report path for {path}")
