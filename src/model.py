@@ -123,7 +123,7 @@ def train_model(X, y, use_feature_selection=True, top_n_features=10, use_gradien
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
     
-    print(f"\nTraining Random Forest...")
+    print("\nTraining...")
     print(f"  Training samples: {len(X_train)}")
     print(f"  Testing samples:  {len(X_test)}")
     print(f"  Features:         {len(selected_features)}")
@@ -166,7 +166,7 @@ def train_model_walk_forward(X, y, n_splits=5, use_feature_selection=True, top_n
 
         y_pred = model.predict(X_test_scaled)
         accuracy = accuracy_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred, average='weighted')
+        f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
     
         accuracies.append(accuracy)
         f1_scores.append(f1)

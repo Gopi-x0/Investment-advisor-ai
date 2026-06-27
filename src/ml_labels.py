@@ -1,5 +1,12 @@
 import pandas as pd
-import numpy as np
+from config import LabelPolicy
+
+
+def label_index(data):
+    if "Date" in data.columns:
+        return data["Date"]
+    return data.index
+
 
 def normalize_series(data, column):
     """Helper to ensure we're working with a Series"""
@@ -7,7 +14,14 @@ def normalize_series(data, column):
         return data[column].iloc[:, 0]
     return data[column]
 
-def create_normal_labels(data, lookahead_days=20, threshold =0.05):
+
+def close_series(data):
+    close = normalize_series(data, "Close").copy()
+    close.index = label_index(data)
+    return close
+
+
+def create_normal_labels(data, lookahead_days=20, threshold=0.05):
     """
     Create BUY / HOLD / SELL labels based on future returns.
 
@@ -25,7 +39,8 @@ def create_normal_labels(data, lookahead_days=20, threshold =0.05):
     if "Close" not in data.columns:
         raise ValueError("Data must contain a 'Close' column")
     
-    close_prices = data["Close"].values
+    close = close_series(data)
+    close_prices = close.values
     labels = [None] * len(close_prices)
 
     for i in range(len(close_prices) - lookahead_days):
@@ -40,12 +55,12 @@ def create_normal_labels(data, lookahead_days=20, threshold =0.05):
         #else: #Optional
         #    labels[i] = 0
 
-    labels_series = pd.Series(labels, index=data.index)
+    labels_series = pd.Series(labels, index=close.index)
     labels_series = labels_series.dropna()
 
     return labels_series
 
-def create_labels(data, lookahead_days=20, volatility_window=20, k=1.0):
+def create_labels(data, lookahead_days=20, volatility_window=20, k=1.0, label_policy: LabelPolicy = "three_class"):
     """
     Create BUY / HOLD / SELL labels based on future returns with dynamic volatility threshold.
 
@@ -64,29 +79,57 @@ def create_labels(data, lookahead_days=20, volatility_window=20, k=1.0):
 
     if "Close" not in data.columns:
         raise ValueError("Data must contain a 'Close' column")
-    
-    close = normalize_series(data, "Close")
-    
-    # Calculate returns (percentage change)
+
+    close = close_series(data)
     returns = close.pct_change()
-    
-    # Calculate rolling volatility (std of returns)
-    volatility = returns.rolling(window=volatility_window).std()
-    
-    # Dynamic threshold based on volatility
-    threshold = k * volatility
-    
-    # Calculate future return aligned to current index
+    threshold = k * returns.rolling(window=volatility_window).std()
     future_return = (close.shift(-lookahead_days) - close) / close
-    
-    # Initialize labels as HOLD (0)
-    labels = pd.Series(0, index=data.index, name="label")
-    
-    labels[future_return >= threshold] = 1 #buy
-    labels[future_return <= -threshold] = -1 #sell
-    
+
+    labels = pd.Series(None, index=close.index, name="label", dtype="object")
+    valid_rows = future_return.notna() & threshold.notna()
+
+    if label_policy == "three_class":
+        labels[valid_rows] = 0
+
+    labels[valid_rows & (future_return > threshold)] = 1
+    labels[valid_rows & (future_return < -threshold)] = -1
+
+    if label_policy == "binary":
+        labels = labels[labels != 0]
+
     labels = labels.dropna()
-    return labels
+    return labels.astype(int)
+
+
+def create_return_labels(
+    data,
+    lookahead_days=20,
+    buy_threshold=0.03,
+    sell_threshold=-0.03,
+    cost_rate=0.0,
+    label_policy: LabelPolicy = "three_class",
+):
+    if data is None or data.empty:
+        raise ValueError("Data is empty or None")
+    if "Close" not in data.columns:
+        raise ValueError("Data must contain a 'Close' column")
+
+    close = close_series(data)
+    future_return = (close.shift(-lookahead_days) - close) / close
+    labels = pd.Series(None, index=close.index, name="label", dtype="object")
+    valid_rows = future_return.notna()
+
+    if label_policy == "three_class":
+        labels[valid_rows] = 0
+
+    labels[valid_rows & (future_return > buy_threshold + cost_rate)] = 1
+    labels[valid_rows & (future_return < sell_threshold - cost_rate)] = -1
+
+    if label_policy == "binary":
+        labels = labels[labels != 0]
+
+    labels = labels.dropna()
+    return labels.astype(int)
 
 
 def create_TBL(data, lookahead_days=20, upper_barrier=0.05, lower_barrier=-0.05, volatility_window = 20):
@@ -98,7 +141,7 @@ def create_TBL(data, lookahead_days=20, upper_barrier=0.05, lower_barrier=-0.05,
     if "Close" not in data.columns:
         raise ValueError("Data must contain a 'Close' column")
     
-    close = normalize_series(data, "Close")
+    close = close_series(data)
 
     labels = []
 
@@ -121,10 +164,15 @@ def create_TBL(data, lookahead_days=20, upper_barrier=0.05, lower_barrier=-0.05,
         else:
             labels.append(None)
 
-    labels.extend([None] * lookahead_days)
+    labels.extend([None] * (len(close) - len(labels)))
 
-    labels_series = pd.Series(labels, index=data.index)
+    labels_series = pd.Series(labels, index=close.index)
     labels_series = labels_series.dropna()
+
+    if labels_series.empty:
+        print("TBL: 0 BUY (0.0%), 0 SELL (0.0%), ")
+        return labels_series
+
     buy = (labels_series == 1).sum()
     sell = (labels_series == -1).sum()
 
@@ -143,7 +191,7 @@ def create_TBL_volatility_adjustment(data, lookahead_days=20, k=1.3, volatility_
     if "Close" not in data.columns:
         raise ValueError("Data must contain a 'Close' column")
     
-    close = normalize_series(data, "Close")
+    close = close_series(data)
 
     returns = close.pct_change()
     rolling_vol = returns.rolling(window=volatility_window).std()    
@@ -178,10 +226,15 @@ def create_TBL_volatility_adjustment(data, lookahead_days=20, k=1.3, volatility_
         else:
             labels.append(None)
 
-    labels.extend([None] * lookahead_days)
+    labels.extend([None] * (len(close) - len(labels)))
 
-    labels_series = pd.Series(labels, index=data.index)
+    labels_series = pd.Series(labels, index=close.index)
     labels_series = labels_series.dropna()
+
+    if labels_series.empty:
+        print("TBL: 0 BUY (0.0%), 0 SELL (0.0%), ")
+        return labels_series
+
     buy = (labels_series == 1).sum()
     sell = (labels_series == -1).sum()
 

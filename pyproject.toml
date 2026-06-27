@@ -1,0 +1,25 @@
+[project]
+name = "investment-advisor-ai"
+version = "0.1.0"
+description = "Educational investment advisor CLI with technical indicators and ML experiments."
+requires-python = ">=3.10"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "yfinance",
+    "streamlit",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["F"]

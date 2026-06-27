@@ -13,6 +13,43 @@ from indicators import (
     getPricePosition
 )
 
+FEATURE_COLUMNS = [
+    "current_price", "short_ma", "long_ma", "momentum", "volatility",
+    "trend_strength", "sharpe_ratio",
+    "price_above_short_ma", "price_above_long_ma", "short_above_long_ma", "ma_spread",
+    "rsi", "macd_histogram", "bb_position", "atr", "volume_ratio",
+    "price_position_52w", "momentum_5d", "momentum_20d",
+    "return_1d", "return_5d", "return_20d", "return_60d",
+    "volatility_10d", "volatility_60d", "ma_slope_20d",
+    "drawdown_from_52w_high", "volume_zscore_20d"
+]
+
+
+def _series(data, column):
+    value = data[column]
+    if isinstance(value, pd.DataFrame):
+        return value.iloc[:, 0]
+    return value
+
+
+def _safe_pct_change(close, days):
+    if len(close) < days + 1:
+        return 0.0
+    past_price = close.iloc[-days - 1]
+    if past_price == 0:
+        return 0.0
+    return float((close.iloc[-1] - past_price) / past_price)
+
+
+def _volume_zscore(data, period=20):
+    if "Volume" not in data.columns:
+        return 0.0
+    volume = _series(data, "Volume").tail(period)
+    std = volume.std()
+    if std == 0 or pd.isna(std):
+        return 0.0
+    return float((volume.iloc[-1] - volume.mean()) / std)
+
 def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10):
     rows = []
     min_days = max(short_range, long_range, momentum_days, 60) + 1
@@ -49,6 +86,23 @@ def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10)
             
             # === PRICE POSITION ===
             price_position_52w = getPricePosition(historical_data, period=252)
+
+            close = _series(historical_data, "Close")
+            return_1d = _safe_pct_change(close, 1)
+            return_5d = _safe_pct_change(close, 5)
+            return_20d = _safe_pct_change(close, 20)
+            return_60d = _safe_pct_change(close, 60)
+            volatility_10d = getVolatility(historical_data, window=10)
+            volatility_60d = getVolatility(historical_data, window=60)
+
+            ma_20 = close.rolling(20).mean()
+            ma_slope_20d = 0.0
+            if len(ma_20.dropna()) > 20 and ma_20.iloc[-21] != 0:
+                ma_slope_20d = float((ma_20.iloc[-1] - ma_20.iloc[-21]) / ma_20.iloc[-21])
+
+            high_52w = close.tail(252).max()
+            drawdown_from_52w_high = 0.0 if high_52w == 0 else float((current_price / high_52w) - 1)
+            volume_zscore_20d = _volume_zscore(historical_data, period=20)
             
             # === DERIVED FEATURES ===
             price_above_short_ma = 1.0 if current_price > short_ma else 0.0
@@ -57,7 +111,7 @@ def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10)
             ma_spread = (short_ma - long_ma) / long_ma
             
             rows.append({
-                "date": data.index[i],
+                "date": data["Date"].iloc[i] if "Date" in data.columns else data.index[i],
                 "current_price": current_price,
                 "short_ma": short_ma,
                 "long_ma": long_ma,
@@ -77,6 +131,15 @@ def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10)
                 "volume_ratio": volume_ratio,
                 # Price position
                 "price_position_52w": price_position_52w,
+                "return_1d": return_1d,
+                "return_5d": return_5d,
+                "return_20d": return_20d,
+                "return_60d": return_60d,
+                "volatility_10d": volatility_10d,
+                "volatility_60d": volatility_60d,
+                "ma_slope_20d": ma_slope_20d,
+                "drawdown_from_52w_high": drawdown_from_52w_high,
+                "volume_zscore_20d": volume_zscore_20d,
                 # Derived
                 "price_above_short_ma": price_above_short_ma,
                 "price_above_long_ma": price_above_long_ma,
@@ -88,7 +151,11 @@ def build_feature_dataset(data, short_range=20, long_range=50, momentum_days=10)
             print(f"Warning: Could not calculate features at index {i}: {e}")
             continue
     
-    df = pd.DataFrame(rows).set_index("date")
+    if rows:
+        df = pd.DataFrame(rows).set_index("date")
+    else:
+        df = pd.DataFrame(columns=FEATURE_COLUMNS)
+        df.index.name = "date"
     
     print(f"Feature dataset built: {len(df)} samples, {len(df.columns)} features")
     print(f"Features: {list(df.columns)}")

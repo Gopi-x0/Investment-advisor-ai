@@ -1,0 +1,163 @@
+{
+  "generated_at": "2026-06-27T06:21:50.381740+00:00",
+  "ticker": "AAPL",
+  "disclaimer": "Educational research tool only. This is not financial advice, not a guarantee of returns, and not a real-money trading system.",
+  "assumptions": [
+    "Educational research tool only. This is not financial advice, not a guarantee of returns, and not a real-money trading system.",
+    "Price policy: raw_close - Use the raw Close column from the data provider.",
+    "Label policy: three_class - BUY, HOLD, and SELL are explicit classes; HOLD means no sufficient edge.",
+    "Cost assumptions: 10.0 bps transaction cost + 5.0 bps slippage per position change."
+  ],
+  "data_summary": {
+    "rows": 1254,
+    "date_start": "2021-06-28T00:00:00",
+    "date_end": "2026-06-25T00:00:00"
+  },
+  "rule_result": {
+    "signal": "SELL",
+    "score": -2,
+    "breakdown": {
+      "moving_avg": "HOLD",
+      "momentum": "SELL",
+      "trend_strength": "SELL",
+      "volatility": "BUY",
+      "sharpe": "BUY"
+    },
+    "current_price": 275.1499938964844,
+    "short_ma": 299.7250015258789,
+    "long_ma": 291.15080017089844,
+    "reason": "Multi-factor rule-based trading model (trend, momentum, risk-adjusted returns)"
+  },
+  "ml_prediction": {
+    "label": -1,
+    "signal": "SELL",
+    "probabilities": {
+      "SELL": 0.45097424828050753,
+      "HOLD": 0.285711861323122,
+      "BUY": 0.2633138903963705
+    }
+  },
+  "model_metrics": {
+    "mean_accuracy": 0.3651282051282051,
+    "std_accuracy": 0.10665680427779008,
+    "mean_f1": 0.28073993461136004,
+    "classes": [
+      -1,
+      0,
+      1
+    ],
+    "class_names": [
+      "SELL",
+      "HOLD",
+      "BUY"
+    ]
+  },
+  "model_metadata": {
+    "trained_at": "2026-06-27T06:21:45.733228+00:00",
+    "model_name": "random_forest",
+    "feature_columns": [
+      "current_price",
+      "short_ma",
+      "long_ma",
+      "momentum",
+      "volatility",
+      "trend_strength",
+      "sharpe_ratio",
+      "price_above_short_ma",
+      "price_above_long_ma",
+      "short_above_long_ma",
+      "ma_spread",
+      "rsi",
+      "macd_histogram",
+      "bb_position",
+      "atr",
+      "volume_ratio",
+      "price_position_52w",
+      "momentum_5d",
+      "momentum_20d",
+      "return_1d",
+      "return_5d",
+      "return_20d",
+      "return_60d",
+      "volatility_10d",
+      "volatility_60d",
+      "ma_slope_20d",
+      "drawdown_from_52w_high",
+      "volume_zscore_20d"
+    ],
+    "selected_features": [
+      "current_price",
+      "short_ma",
+      "long_ma",
+      "volatility",
+      "trend_strength",
+      "price_above_long_ma",
+      "ma_spread",
+      "atr",
+      "volume_ratio",
+      "price_position_52w",
+      "volatility_10d",
+      "volatility_60d",
+      "ma_slope_20d",
+      "drawdown_from_52w_high",
+      "volume_zscore_20d"
+    ],
+    "price_policy": "raw_close",
+    "label_policy": "three_class",
+    "lookahead_days": 20,
+    "transaction_cost_bps": 10.0,
+    "slippage_bps": 5.0
+  },
+  "top_feature_importance": {
+    "volatility_60d": 0.1026427962489344,
+    "long_ma": 0.041943734015345326,
+    "volatility": 0.04109121909633422,
+    "drawdown_from_52w_high": 0.02745098039215692,
+    "trend_strength": 0.025916453537936944,
+    "atr": 0.025234441602728096,
+    "price_position_52w": 0.02267689684569485,
+    "short_ma": 0.020460358056266024,
+    "ma_spread": 0.013128729752770707,
+    "ma_slope_20d": 0.010741687979539694,
+    "current_price": 0.010400682011935225,
+    "volatility_10d": 0.009889173060528588,
+    "volume_zscore_20d": 0.0034100596760444192,
+    "price_above_long_ma": 0.0008525149190111492,
+    "rsi": 0.0
+  },
+  "backtest_metrics": {
+    "cumulative_return": 0.1491283618710988,
+    "buy_hold_return": 1.1140507365136836,
+    "max_drawdown": -0.37656238008151866,
+    "annualized_volatility": 0.21011803092247,
+    "sharpe_ratio": 0.27552018028875913,
+    "hit_rate": 0.46722454672245467,
+    "turnover": 85.0,
+    "total_cost_rate": 0.0015
+  },
+  "risk_summary": {
+    "annualized_volatility": 0.27665227125805925,
+    "sharpe_ratio": 0.584291668002933,
+    "sortino_ratio": 0.8464703486133708,
+    "max_drawdown": -0.3343370956600401,
+    "value_at_risk_95": -0.027193814015144667,
+    "conditional_value_at_risk_95": -0.0391533469020241
+  },
+  "monte_carlo_metrics": {
+    "expected_return": 0.04722014718026169,
+    "median_return": 0.03402242745578177,
+    "probability_of_loss": 0.39,
+    "value_at_risk_95": -0.1553501057074358,
+    "conditional_value_at_risk_95": -0.20498653476176348,
+    "expected_max_drawdown": -0.1186223824295716,
+    "probability_below_start": 0.39,
+    "probability_stop_loss_hit": 0.288
+  },
+  "warnings": [],
+  "limitations": [
+    "Educational research only; not financial advice.",
+    "Market data may be delayed, revised, incomplete, or provider-dependent.",
+    "Backtests and Monte Carlo scenarios are assumption-driven and do not predict guaranteed outcomes.",
+    "No brokerage integration or real-money trading readiness is provided."
+  ]
+}

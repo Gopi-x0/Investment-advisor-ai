@@ -14,10 +14,6 @@ def normalize_series(data, column):
         return data[column].iloc[:, 0]
     return data[column]
 
-# ============================================================================
-# CORE FEATURES (Your existing ones, but FIXED)
-# ============================================================================
-
 def getMovingAverages(data, short_range=20, long_range=50):
     """
     Calculate short and long-term moving averages.
